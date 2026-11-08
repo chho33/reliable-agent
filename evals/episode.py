@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import asdict, dataclass, field
 from typing import Callable, Sequence
@@ -28,6 +29,21 @@ class TimedChat:
             return self.inner.chat(system, messages, tools)
         finally:
             self.seconds += time.perf_counter() - t0
+
+
+def transcript(state: State) -> list[tuple[str, str]]:
+    """(speaker, text) pairs: customer / agent text, plus the agent's tool calls and results."""
+    out: list[tuple[str, str]] = []
+    for m in state.messages:
+        if m.role == "user":
+            out.append(("customer", m.content))
+        elif m.role == "tool":
+            out.append(("tool result", m.content))
+        else:
+            if m.content:
+                out.append(("agent", m.content))
+            out += [("tool call", f"{c.name}({json.dumps(c.arguments)})") for c in m.tool_calls]
+    return out
 
 
 @dataclass
@@ -72,12 +88,14 @@ def run_episode(
     user: UserModel,
     *,
     engine: str = "builtin",
-    max_steps: int = 30,
+    max_turn_steps: int = 8,
+    max_episode_steps: int = 60,
     agent_cost: CostFn = lambda u: None,
     user_cost: CostFn = lambda u: None,
 ) -> EpisodeResult:
     chat = TimedChat(agent_chat)
-    agent, backend = build_agent(chat, variant, engine=engine, max_steps=max_steps)
+    agent, backend = build_agent(chat, variant, engine=engine, max_turn_steps=max_turn_steps,
+                              max_episode_steps=max_episode_steps)
     initial = backend.snapshot()
     state: State = agent.new_state()
     error, termination, turns = "", "", 0
@@ -110,5 +128,5 @@ def run_episode(
         cost_usd=agent_cost(state.usage), user_cost_usd=user_cost(user.usage), latency_s=round(latency, 3),
         agent_latency_s=round(chat.seconds, 3), error=error, failed_assertions=" | ".join(result.failed_assertions),
         detail={"violations": result.policy_violations, "forbidden": result.forbidden_hits,
-                "transcript": [(m.role, m.content) for m in state.messages if m.role != "tool" and m.content]},
+                "transcript": transcript(state)},
     )

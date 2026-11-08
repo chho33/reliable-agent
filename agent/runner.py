@@ -12,7 +12,7 @@ from llm.types import Message
 
 def run_graph(spec: GraphSpec, state: State, *, max_visits: int = 500) -> State:
     """Execute nodes from the entry until END. ``max_visits`` is a safety net only;
-    the real bound is ``Deps.max_steps`` on model calls."""
+    the real bound is ``Deps.max_turn_steps`` / ``max_episode_steps`` on model calls."""
     node = spec.entry
     for _ in range(max_visits):
         state = spec.nodes[node](state)
@@ -49,6 +49,7 @@ class Agent:
         if state.done:
             raise RuntimeError("conversation has ended")
         state.turn += 1
+        state.turn_steps = 0
         state.reply, state.trigger = None, None
         state.messages.append(Message("user", user_text))
         if self._lg is not None:

@@ -48,7 +48,8 @@ def run_experiment(
     *,
     engine: str = "builtin",
     workers: int = 1,
-    max_steps: int = 30,
+    max_turn_steps: int = 8,
+    max_episode_steps: int = 60,
     agent_cost: Callable[[Usage], float | None] = lambda u: None,
     user_cost: Callable[[Usage], float | None] = lambda u: None,
     progress: Callable[[EpisodeResult], None] | None = None,
@@ -58,7 +59,8 @@ def run_experiment(
     def one(spec: EpisodeSpec) -> EpisodeResult:
         res = run_episode(
             spec.scenario, spec.variant, spec.trial, agent_factory(spec), user_factory(spec),  # type: ignore[arg-type]
-            engine=engine, max_steps=max_steps, agent_cost=agent_cost, user_cost=user_cost,
+            engine=engine, max_turn_steps=max_turn_steps,
+            max_episode_steps=max_episode_steps, agent_cost=agent_cost, user_cost=user_cost,
         )
         if progress:
             progress(res)
@@ -81,7 +83,8 @@ def parse_args(argv: Sequence[str] | None) -> argparse.Namespace:
     p.add_argument("--out", default="results")
     p.add_argument("--engine", choices=["builtin", "langgraph"], default="builtin")
     p.add_argument("--workers", type=int, default=4)
-    p.add_argument("--max-steps", type=int, default=30)
+    p.add_argument("--max-turn-steps", type=int, default=8, help="model calls allowed per user turn")
+    p.add_argument("--max-episode-steps", type=int, default=60, help="model calls allowed per episode")
     p.add_argument("--bootstrap", type=int, default=2000)
     p.add_argument("--seed", type=int, default=0, help="bootstrap seed")
     p.add_argument("--update-readme", action="store_true", help="write the results table into README.md")
@@ -117,7 +120,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         scenarios, variants, trials,
         agent_factory=lambda spec: make_chat(agent_spec, config),
         user_factory=lambda spec: LLMUser(make_chat(user_spec, config), spec.scenario),
-        engine=args.engine, workers=args.workers, max_steps=args.max_steps,
+        engine=args.engine, workers=args.workers, max_turn_steps=args.max_turn_steps,
+        max_episode_steps=args.max_episode_steps,
         agent_cost=partial(cost_usd, agent_mc), user_cost=partial(cost_usd, user_mc), progress=progress,
     )
     meta = {"date": dt.date.today().isoformat(), "agent_model": agent_spec, "user_model": user_spec,

@@ -47,7 +47,8 @@ def test_unverified_write_is_a_violation_even_if_final_state_looks_fine():
     b, tb, init = world()
     log = [record(tb, 1, "refund_order", {"order_id": "ORD-1013", "amount": 35.0, "reason": "x"})]  # never verified
     res = check_episode(SC["n04_refund_small_recent"], init, b.snapshot(), log)
-    assert res.success  # the final state matches the expectation...
+    assert res.failed_assertions == []  # the final state matches the expectation...
+    assert not res.success  # ...but success requires no violation
     assert res.violating and "not been verified" in res.policy_violations[0]["reason"]  # ...but the write was not allowed
 
 

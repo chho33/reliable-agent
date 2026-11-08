@@ -57,7 +57,8 @@ class Deps:
     policy_text: str
     today: date
     variant: Variant
-    max_steps: int = 30
+    max_turn_steps: int = 8  # model calls allowed within one user turn
+    max_episode_steps: int = 60  # model calls allowed in the whole conversation
     defs: dict[str, ToolDef] = field(init=False)
 
     def __post_init__(self) -> None:
@@ -71,6 +72,30 @@ def _json(obj: Any) -> str:
 def _norm(text: str) -> str:
     """Lowercase, strip punctuation, collapse whitespace; padded so matches are whole-word."""
     return " " + " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in text).split()) + " "
+
+
+AFFIRMATIVES = ("yes", "yeah", "yep", "y", "confirm", "confirmed", "ok", "okay", "sure", "correct",
+                "go ahead", "please do", "do it", "proceed", "that s right")
+NEGATIONS = {"no", "nope", "not", "don", "dont", "cancel", "stop", "wait"}  # "don't" normalises to "don t"
+
+
+def quote_confirms(quote: str, latest_user_text: str) -> str | None:
+    """Return None if ``quote`` validly confirms, else the reason it does not.
+
+    Deterministic guard against a model self-confirming: the quote must (a) appear, as
+    whole words, in the customer's latest message, (b) contain an affirmative word or
+    phrase from a fixed list, and (c) the latest message must contain no standalone
+    negation or hesitation word. Deliberately conservative: a mixed message such as
+    "yes but don't ..." is rejected and the model must ask again.
+    """
+    q, text = _norm(quote), _norm(latest_user_text)
+    if not q.strip() or q not in text:
+        return "user_quote must be copied from the customer's latest message"
+    if not any(f" {a} " in q for a in AFFIRMATIVES):
+        return "user_quote does not contain an explicit confirmation (e.g. 'yes', 'go ahead')"
+    if NEGATIONS & set(text.split()):
+        return "the customer's latest message contains a negation or hesitation; ask them to confirm explicitly"
+    return None
 
 
 def describe_action(action: WriteAction, args: dict[str, Any]) -> str:
@@ -117,11 +142,13 @@ def make_nodes(deps: Deps) -> dict[str, Any]:
 
     # ------------------------------------------------------------------ act
     def act(state: State) -> State:
-        if state.steps >= deps.max_steps:
-            state.done, state.termination = True, "step_cap"
+        if state.steps >= deps.max_episode_steps or state.turn_steps >= deps.max_turn_steps:
+            state.done = True
+            state.termination = "episode_step_cap" if state.steps >= deps.max_episode_steps else "turn_step_cap"
             state.reply = "I'm sorry, I wasn't able to finish this request. Please contact support again."
             return state
         state.steps += 1
+        state.turn_steps += 1
         system = build_system_prompt(deps.policy_text, deps.variant, deps.today, state.pending)
         resp = deps.chat.chat(system, state.messages, llm_tools(state))
         state.usage += resp.usage
@@ -143,13 +170,11 @@ def make_nodes(deps: Deps) -> dict[str, Any]:
                     state.pending = None
                     _answer(state, call, {"ok": True, "message": "Pending action cancelled."})
             elif guarded and call.name == CONFIRM_TOOL:
-                quote = _norm(str(call.arguments.get("user_quote", ""))).strip()
+                problem = quote_confirms(str(call.arguments.get("user_quote", "")), _latest_user_text(state))
                 if state.pending is None:
                     _answer(state, call, {"ok": False, "error": "no_pending_action"})
-                elif not quote or f" {quote} " not in _norm(_latest_user_text(state)):
-                    _answer(state, call, {"ok": False, "error": "confirmation_not_found",
-                                          "message": "user_quote must be copied from the customer's latest message; "
-                                                     "ask the customer to confirm explicitly."})
+                elif problem:
+                    _answer(state, call, {"ok": False, "error": "confirmation_not_found", "message": problem})
                 else:
                     state.trigger, state.unanswered = Trigger("confirm", call), call
                     break

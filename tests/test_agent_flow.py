@@ -177,13 +177,24 @@ def test_malformed_arguments_do_not_crash_guarded():
     assert tool_results(state)[1]["error"] == "denied_by_policy" and "malformed" in tool_results(state)[1]["message"]
 
 
-def test_step_cap_terminates_episode():
-    loop = [turn("", ("get_order", {"order_id": "ORD-1013"}))] * 5
-    chat = ScriptedChat(loop)
-    agent, _ = build_agent(chat, "guarded", max_steps=3)
+def test_turn_step_cap_terminates_with_distinct_reason():
+    chat = ScriptedChat([turn("", ("get_order", {"order_id": "ORD-1013"}))] * 5)
+    agent, _ = build_agent(chat, "guarded", max_turn_steps=3)
     state = agent.new_state()
     agent.run_turn(state, "hi")
-    assert state.done and state.termination == "step_cap" and state.steps == 3
+    assert state.done and state.termination == "turn_step_cap" and state.steps == 3
+
+
+def test_turn_counter_resets_each_turn_and_episode_cap_applies():
+    texts = [turn("", ("get_order", {"order_id": "ORD-1013"})), turn("reply")] * 3
+    agent, _ = build_agent(ScriptedChat(texts), "guarded", max_turn_steps=2, max_episode_steps=5)
+    state = agent.new_state()
+    for _ in range(2):  # 2 model calls per turn: within the per-turn cap, and the counter resets
+        agent.run_turn(state, "hi")
+        assert not state.done and state.turn_steps == 2
+    assert state.steps == 4
+    agent.run_turn(state, "again")  # 5th call allowed, 6th hits the episode cap
+    assert state.done and state.termination == "episode_step_cap" and state.steps == 5
 
 
 def test_system_prompt_contains_policy_date_and_pending_action():
@@ -209,3 +220,29 @@ def test_confirmation_quote_must_match_whole_words():
     script = [turn("", VERIFY), turn("", REFUND_OK), turn("", ("confirm_pending", {"user_quote": "no"})), turn("ok")]
     _, _, state, _, _ = run("guarded", script, ["refund ORD-1013", "I do not know yet"])
     assert state.action_log == [] and tool_results(state)[-1]["error"] == "confirmation_not_found"
+
+
+@pytest.mark.parametrize("quote,user,ok", [
+    ("yes please", "yes please", True),
+    ("Yes, go ahead.", "Yes, go ahead. Thanks!", True),
+    ("that's right", "Hmm, that's right", True),
+    ("refund", "no, refund the other order instead", False),      # non-affirmative quote
+    ("no, refund the other order instead", "no, refund the other order instead", False),
+    ("yes", "wait, not yet", False),                                # quote not in message
+    ("not yet", "wait, not yet", False),                            # negation, not affirmative
+    ("yes", "yes but don't use that address", False),               # affirmative + negation in message
+    ("ok", "ok cancel it", False),
+    ("thanks", "thanks", False),
+    ("", "yes", False),
+])
+def test_quote_confirms(quote, user, ok):
+    from agent.nodes import quote_confirms
+
+    assert (quote_confirms(quote, user) is None) == ok
+
+
+def test_model_cannot_confirm_with_non_affirmative_quote_from_negative_message():
+    script = [turn("", VERIFY), turn("", REFUND_OK), turn("", ("confirm_pending", {"user_quote": "refund"})), turn("Understood.")]
+    _, backend, state, _, _ = run("guarded", script, ["refund ORD-1013", "no, refund the other order instead"])
+    assert state.action_log == [] and state.pending is not None
+    assert tool_results(state)[-1]["error"] == "confirmation_not_found"

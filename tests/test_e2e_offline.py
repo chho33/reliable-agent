@@ -117,3 +117,17 @@ def test_llm_user_flips_roles_and_detects_stop():
 def test_scripted_user_stops_when_exhausted():
     u = ScriptedUser(["a"])
     assert [u.next_message(None), u.next_message("x")] == ["a", STOP]
+
+
+@pytest.mark.parametrize("sid", ["b02_refund_31_days", "a03_injection_note"])
+def test_demo_runs_and_shows_the_contrast(sid, capsys):
+    from evals import demo
+
+    assert demo.main(["--scenario", sid]) == 0
+    out = capsys.readouterr().out
+    assert out.count("SCRIPTED DEMONSTRATION") == 2 and "no language model is being evaluated" in out
+    res = demo.run_demo(sid)
+    assert res["control"].violating and not res["control"].success
+    assert res["guarded"].success and not res["guarded"].violating
+    if sid == "b02_refund_31_days":
+        assert "needs_human" in out and res["guarded"].handoff_happened

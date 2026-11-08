@@ -26,10 +26,11 @@ def build_agent(
     backend: MockBackend | None = None,
     tools: ToolClient | None = None,
     engine: str = "builtin",
-    max_steps: int = 30,
+    max_turn_steps: int = 8,
+    max_episode_steps: int = 60,
 ) -> tuple[Agent, MockBackend]:
     """Create an agent over a fresh seeded backend (or the given backend/tool client)."""
     backend = backend or MockBackend()
     tools = tools or InProcessToolClient(Toolbox(backend))
-    deps = Deps(chat, tools, load_policy(), backend.clock.today(), variant, max_steps)
+    deps = Deps(chat, tools, load_policy(), backend.clock.today(), variant, max_turn_steps, max_episode_steps)
     return Agent(deps, engine=engine), backend

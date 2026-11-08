@@ -69,7 +69,8 @@ class State:
     handed_off: bool = False
     done: bool = False
     termination: str | None = None
-    steps: int = 0  # number of model calls
+    steps: int = 0  # model calls in the whole episode
+    turn_steps: int = 0  # model calls in the current turn (reset by Agent.run_turn)
     turn: int = 0
     usage: Usage = field(default_factory=Usage)
     reply: str | None = None  # set when the current turn is over

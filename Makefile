@@ -2,7 +2,7 @@
 # Override to use another interpreter, e.g.:  make test PYTHON=python
 PYTHON ?= uv run python
 
-.PHONY: setup test eval-smoke eval mcp
+.PHONY: setup test eval-smoke eval mcp demo
 
 setup:            ## install deps (generates uv.lock on first run)
 	uv sync --extra dev
@@ -18,3 +18,6 @@ eval:             ## all 20 scenarios, k=4, both variants; writes results/ and f
 
 mcp:              ## run the tool server over stdio
 	$(PYTHON) -m tools.mcp_server
+
+demo:             ## offline scripted control-vs-guarded demo (no API key; not a model evaluation)
+	$(PYTHON) -m evals.demo --scenario b02_refund_31_days
