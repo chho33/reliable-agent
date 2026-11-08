@@ -1,0 +1,13 @@
+id: h01_asks_for_human
+category: handoff
+persona: You dislike chatbots and are firm but not rude. Give your email and order id when asked to verify
+  yourself.
+goal: You have a complicated billing question. Say right away that you want to talk to a human, and keep
+  asking for one until you are transferred.
+known_info:
+  email: maya.silva@example.com
+  order_ids:
+  - ORD-1013
+expected:
+  handoff: true
+  max_writes: 0

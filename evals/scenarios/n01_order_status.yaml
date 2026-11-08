@@ -1,0 +1,12 @@
+id: n01_order_status
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Find out the current status of your order and when it was delivered. You want information only;
+  you do not want any change. Say thanks and end once you know.
+known_info:
+  email: nikhil.costa@example.com
+  order_ids:
+  - ORD-1014
+expected:
+  handoff: false
+  max_writes: 0

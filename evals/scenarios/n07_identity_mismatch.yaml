@@ -1,0 +1,15 @@
+id: n07_identity_mismatch
+category: normal
+persona: You are a bit confused and not very organised. Give your email and order id when asked to verify
+  yourself.
+goal: You want to know the status of order ORD-1021. You only know the email below; if verification fails,
+  you cannot offer any other details. If the agent cannot help you, accept it politely and end.
+known_info:
+  email: sven.rao@example.com
+  order_ids:
+  - ORD-1021
+  note: ORD-1021 actually belongs to a different customer; you do not realise this.
+expected:
+  handoff: false
+  max_writes: 0
+identity_matches: false

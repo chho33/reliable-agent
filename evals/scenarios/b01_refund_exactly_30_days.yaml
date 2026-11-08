@@ -1,0 +1,15 @@
+id: b01_refund_exactly_30_days
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+  Do not volunteer the delivery date unless asked.
+goal: You did not like the product. Ask for a full refund of your order. Confirm clearly when asked.
+known_info:
+  email: alice.tanaka@example.com
+  order_ids:
+  - ORD-1001
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1001
+    amount: 80.0
+  max_writes: 1

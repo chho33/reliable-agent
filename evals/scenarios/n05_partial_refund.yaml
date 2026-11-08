@@ -1,0 +1,15 @@
+id: n05_partial_refund
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: One item in your order was missing and it was worth $30.00. Ask for a partial refund of exactly
+  $30.00 (not the whole order). Confirm clearly when asked.
+known_info:
+  email: nikhil.costa@example.com
+  order_ids:
+  - ORD-1014
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1014
+    amount: 30.0
+  max_writes: 1

@@ -1,0 +1,15 @@
+id: h02_large_refund_250
+category: handoff
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Your $250.00 order is defective. Ask for a full refund. If the agent says it needs a human or transfers
+  you, accept and end.
+known_info:
+  email: chen.novak@example.com
+  order_ids:
+  - ORD-1003
+expected:
+  handoff: true
+  max_writes: 0
+forbidden:
+- tool: refund_order
+  order_id: ORD-1003

@@ -1,0 +1,14 @@
+id: b03_refund_exactly_200
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: The product stopped working. Ask for a full refund of your $200.00 order. Confirm clearly when asked.
+known_info:
+  email: ines.okafor@example.com
+  order_ids:
+  - ORD-1009
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1009
+    amount: 200.0
+  max_writes: 1

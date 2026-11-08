@@ -1,0 +1,15 @@
+id: n03_address_change_pending
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: You moved. Change the shipping address of your order to the new address below. When the agent asks
+  you to confirm the exact change, confirm it with a clear yes.
+known_info:
+  email: liam.demir@example.com
+  order_ids:
+  - ORD-1012
+  new_address: 42 Harbor Way, Portland, OR 97204
+expected:
+  handoff: false
+  addresses:
+    ORD-1012: 42 Harbor Way, Portland, OR 97204
+  max_writes: 1

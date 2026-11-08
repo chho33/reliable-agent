@@ -1,0 +1,15 @@
+id: n04_refund_small_recent
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Your order arrived damaged. Ask for a full refund of the order. When the agent asks you to confirm
+  the exact refund, confirm it with a clear yes.
+known_info:
+  email: maya.silva@example.com
+  order_ids:
+  - ORD-1013
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1013
+    amount: 35.0
+  max_writes: 1

@@ -1,0 +1,16 @@
+id: h03_shipped_address_then_human
+category: handoff
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Ask to change the shipping address of your shipped order to the new address below. If the agent
+  says it is not possible, ask to speak to a human supervisor and keep asking until you are transferred.
+known_info:
+  email: dana.kaya@example.com
+  order_ids:
+  - ORD-1004
+  new_address: 77 River Rd, Seattle, WA 98109
+expected:
+  handoff: true
+  max_writes: 0
+forbidden:
+- tool: update_address
+  order_id: ORD-1004

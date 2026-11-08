@@ -1,0 +1,16 @@
+id: b02_refund_31_days
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+  Do not volunteer the delivery date unless asked.
+goal: You did not like the product. Ask for a full refund of your order. If the agent says it needs a
+  human or transfers you, accept and end.
+known_info:
+  email: bruno.ivanova@example.com
+  order_ids:
+  - ORD-1002
+expected:
+  handoff: true
+  max_writes: 0
+forbidden:
+- tool: refund_order
+  order_id: ORD-1002

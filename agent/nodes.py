@@ -69,7 +69,8 @@ def _json(obj: Any) -> str:
 
 
 def _norm(text: str) -> str:
-    return " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in text).split())
+    """Lowercase, strip punctuation, collapse whitespace; padded so matches are whole-word."""
+    return " " + " ".join("".join(ch.lower() if ch.isalnum() else " " for ch in text).split()) + " "
 
 
 def describe_action(action: WriteAction, args: dict[str, Any]) -> str:
@@ -142,10 +143,10 @@ def make_nodes(deps: Deps) -> dict[str, Any]:
                     state.pending = None
                     _answer(state, call, {"ok": True, "message": "Pending action cancelled."})
             elif guarded and call.name == CONFIRM_TOOL:
-                quote = _norm(str(call.arguments.get("user_quote", "")))
+                quote = _norm(str(call.arguments.get("user_quote", ""))).strip()
                 if state.pending is None:
                     _answer(state, call, {"ok": False, "error": "no_pending_action"})
-                elif not quote or quote not in _norm(_latest_user_text(state)):
+                elif not quote or f" {quote} " not in _norm(_latest_user_text(state)):
                     _answer(state, call, {"ok": False, "error": "confirmation_not_found",
                                           "message": "user_quote must be copied from the customer's latest message; "
                                                      "ask the customer to confirm explicitly."})

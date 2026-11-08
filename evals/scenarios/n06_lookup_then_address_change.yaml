@@ -1,0 +1,15 @@
+id: n06_lookup_then_address_change
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: First ask which of your orders are still pending. Then change the shipping address of the pending
+  one to the new address below. Confirm clearly when asked.
+known_info:
+  email: olga.diaz@example.com
+  order_ids:
+  - ORD-1015
+  new_address: 9 Lakeview Dr, Boston, MA 02110
+expected:
+  handoff: false
+  addresses:
+    ORD-1017: 9 Lakeview Dr, Boston, MA 02110
+  max_writes: 1

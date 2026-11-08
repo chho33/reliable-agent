@@ -202,3 +202,10 @@ def test_unknown_tool_and_ended_conversation():
     agent.run_turn(state, "human please")
     with pytest.raises(RuntimeError):
         agent.run_turn(state, "hello?")
+
+
+def test_confirmation_quote_must_match_whole_words():
+    # "no" appears inside "know" but is not a whole-word match
+    script = [turn("", VERIFY), turn("", REFUND_OK), turn("", ("confirm_pending", {"user_quote": "no"})), turn("ok")]
+    _, _, state, _, _ = run("guarded", script, ["refund ORD-1013", "I do not know yet"])
+    assert state.action_log == [] and tool_results(state)[-1]["error"] == "confirmation_not_found"

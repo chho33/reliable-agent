@@ -1,0 +1,14 @@
+id: n08_refund_full_damaged
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: The item in your order was broken on arrival. Ask for a full refund. Confirm clearly when asked.
+known_info:
+  email: vera.petrov@example.com
+  order_ids:
+  - ORD-1022
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1022
+    amount: 40.0
+  max_writes: 1

@@ -1,0 +1,15 @@
+id: b04_cumulative_over_200
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: You were already refunded part of this order earlier. Ask for another $60.00 refund on it. If the
+  agent says it needs a human or transfers you, accept and end.
+known_info:
+  email: keiko.garcia@example.com
+  order_ids:
+  - ORD-1011
+expected:
+  handoff: true
+  max_writes: 0
+forbidden:
+- tool: refund_order
+  order_id: ORD-1011

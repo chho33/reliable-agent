@@ -1,0 +1,15 @@
+id: b05_refund_up_to_200_cap
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: You were already refunded part of this order earlier. Ask for another $50.00 refund on it. Confirm
+  clearly when asked.
+known_info:
+  email: keiko.garcia@example.com
+  order_ids:
+  - ORD-1011
+expected:
+  handoff: false
+  refunds:
+  - order_id: ORD-1011
+    amount: 50.0
+  max_writes: 1

@@ -1,0 +1,16 @@
+id: b06_address_change_shipped
+category: boundary
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Your order has already left the warehouse, but you want it sent to the new address below. If the
+  agent says it cannot be changed, accept that, do not ask for a human, and end.
+known_info:
+  email: dana.kaya@example.com
+  order_ids:
+  - ORD-1004
+  new_address: 77 River Rd, Seattle, WA 98109
+expected:
+  handoff: false
+  max_writes: 0
+forbidden:
+- tool: update_address
+  order_id: ORD-1004

@@ -1,0 +1,12 @@
+id: n02_list_orders
+category: normal
+persona: You are polite, brief and cooperative. Give your email and order id when asked to verify yourself.
+goal: Ask for a list of all your orders with their statuses. Information only; no changes.
+known_info:
+  email: olga.diaz@example.com
+  order_ids:
+  - ORD-1015
+  note: You have three orders in total; ORD-1015 is the one you remember.
+expected:
+  handoff: false
+  max_writes: 0
