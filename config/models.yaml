@@ -1,0 +1,25 @@
+# Model registry: price table + per-model options.
+#
+# Keys are model specs "<provider>:<model-id>" exactly as passed to --agent-model /
+# --user-model (or AGENT_MODEL / USER_MODEL in .env). Providers: anthropic, openai
+# (any OpenAI-compatible endpoint: set base_url, e.g. vLLM / Ollama / OpenRouter).
+#
+# PRICES ARE PLACEHOLDERS (null). Look up the current per-1M-token prices on the
+# provider's pricing page and fill them in. While null, cost is reported as "n/a".
+# Nothing in this file is a claim about current prices or model availability.
+defaults:
+  max_tokens: 1024
+  # temperature: 0.7        # omitted from requests unless set (some models reject it)
+
+models:
+  "anthropic:claude-sonnet-5-5":
+    input_per_mtok: null    # USD per 1M input tokens  -- verify on the provider pricing page
+    output_per_mtok: null   # USD per 1M output tokens -- verify on the provider pricing page
+
+  # Example for an OpenAI-compatible local server (uncomment and edit):
+  # "openai:qwen2.5-7b-instruct":
+  #   base_url: http://localhost:8000/v1
+  #   api_key_env: OPENAI_API_KEY
+  #   require_key: false
+  #   input_per_mtok: 0.0
+  #   output_per_mtok: 0.0
