@@ -156,6 +156,25 @@ def test_openai_max_tokens_field_configurable():
     assert body["max_completion_tokens"] == 5 and "max_tokens" not in body
 
 
+def test_openai_extra_body_is_sent_and_cannot_override_core_fields():
+    tools = [ToolSpec("get_order", "look up an order", {"type": "object", "properties": {}})]
+    body = OpenAICompatChat("m", extra_body={"reasoning_effort": "none"}).build_request("s", [], tools)
+    assert body["reasoning_effort"] == "none" and body["tools"][0]["function"]["name"] == "get_order"
+    with pytest.raises(ValueError, match="extra_body may not set"):
+        OpenAICompatChat("m", max_tokens_field="max_completion_tokens", extra_body={"max_completion_tokens": 9})
+
+
+def test_make_chat_passes_extra_body_from_config():
+    config = {"models": {"openai:gpt-6-luna": {"max_tokens_field": "max_completion_tokens", "max_tokens": 2048,
+                                               "extra_body": {"reasoning_effort": "none"},
+                                               "input_per_mtok": 0.1, "output_per_mtok": 0.5}}}
+    chat = make_chat("openai:gpt-6-luna", config)
+    body = chat.build_request("s", [], [])
+    assert body["model"] == "gpt-6-luna" and body["max_completion_tokens"] == 2048
+    assert body["reasoning_effort"] == "none" and "max_tokens" not in body
+    assert cost_usd(resolve("openai:gpt-6-luna", config), Usage(1_000_000, 1_000_000)) == pytest.approx(0.6)
+
+
 def test_openai_parse_tool_calls_and_bad_json():
     r = OpenAICompatChat.parse_response({
         "choices": [{"message": {"content": None, "tool_calls": [

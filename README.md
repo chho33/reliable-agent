@@ -103,6 +103,7 @@ make eval                    # 20 scenarios, k=4, both variants; writes results/
 Models are specified as `provider:model-id` (`anthropic:...`, or `openai:...` for any OpenAI-compatible
 endpoint such as vLLM, Ollama or OpenRouter via `base_url` in `config/models.yaml` / `OPENAI_BASE_URL`).
 Fill in `input_per_mtok` / `output_per_mtok` in `config/models.yaml` to get cost; until then cost shows as n/a.
+Provider-specific request fields go under `extra_body` for a model in `config/models.yaml` (for example `reasoning_effort: none`, which `gpt-6-luna` needs for tool calling on Chat Completions).
 `make demo` replays a scripted (no-model) control-vs-guarded comparison offline. Add `--engine langgraph` to run the same nodes through LangGraph. `make mcp` runs the tool server over stdio.
 
 ## Results

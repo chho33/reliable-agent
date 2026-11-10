@@ -77,5 +77,5 @@ def make_chat(spec: str, config: dict[str, Any] | None = None) -> ChatModel:
     return OpenAICompatChat(
         mc.model, base_url=o.get("base_url") or os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1"),
         api_key_env=o.get("api_key_env", "OPENAI_API_KEY"), max_tokens_field=o.get("max_tokens_field", "max_tokens"),
-        require_key=o.get("require_key", True), **common,
+        require_key=o.get("require_key", True), extra_body=o.get("extra_body"), **common,
     )

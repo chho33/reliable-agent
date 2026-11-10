@@ -16,6 +16,17 @@ models:
     input_per_mtok: null    # USD per 1M input tokens  -- verify on the provider pricing page
     output_per_mtok: null   # USD per 1M output tokens -- verify on the provider pricing page
 
+  # OpenAI gpt-6-luna. Prices from https://developers.openai.com/api/docs/models/gpt-6-luna
+  # (checked 2026-11-10; cached input $0.01/1M is not modelled here). On Chat Completions this
+  # model supports function calling only with reasoning_effort "none", so it runs without reasoning.
+  "openai:gpt-6-luna":
+    max_tokens_field: max_completion_tokens
+    max_tokens: 2048
+    extra_body:
+      reasoning_effort: none
+    input_per_mtok: 0.10
+    output_per_mtok: 0.50
+
   # Example for an OpenAI-compatible local server (uncomment and edit):
   # "openai:qwen2.5-7b-instruct":
   #   base_url: http://localhost:8000/v1

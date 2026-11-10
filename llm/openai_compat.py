@@ -22,6 +22,7 @@ class OpenAICompatChat:
         temperature: float | None = None,
         timeout: float = 120.0,
         require_key: bool = True,
+        extra_body: dict[str, Any] | None = None,
     ) -> None:
         self.model = model
         self.base_url = base_url.rstrip("/")
@@ -31,6 +32,13 @@ class OpenAICompatChat:
         self.temperature = temperature
         self.timeout = timeout
         self.require_key = require_key  # local servers (Ollama/vLLM) often need no key
+        # Provider-specific request fields from config (e.g. {"reasoning_effort": "none"}).
+        # They cannot replace the fields this adapter builds itself.
+        reserved = {"model", "messages", "tools", max_tokens_field}
+        clash = reserved & set(extra_body or {})
+        if clash:
+            raise ValueError(f"extra_body may not set {sorted(clash)}; use the dedicated options instead")
+        self.extra_body = dict(extra_body or {})
 
     @staticmethod
     def convert_messages(system: str, messages: Sequence[Message]) -> list[dict[str, Any]]:
@@ -63,6 +71,7 @@ class OpenAICompatChat:
             ]
         if self.temperature is not None:
             body["temperature"] = self.temperature
+        body.update(self.extra_body)
         return body
 
     @staticmethod
