@@ -1,15 +1,123 @@
 # reliable-agent
 
 An e-commerce customer-support agent (look up orders, change shipping addresses, issue refunds,
-hand off to a human, sync notes/tickets to a CRM) built to answer one question with data:
+hand off to a human, sync notes/tickets to a CRM) designed so that **the store's rules are enforced by
+code, not by hoping the language model remembers them** and measured, with data, to show that it works.
 
-> **Headline claim (to be filled from real runs, not yet measured):**
-> Adding a deterministic, code-enforced policy guard + user confirmation before writes reduces
-> policy-violating writes from **X%** to **Y%** and raises pass^4 from **A** to **B** across
-> **N** scenarios.
+> **Headline result** (20 scenarios x 4 trials per variant, same model, tools and policy text):
+> adding a deterministic, code-enforced policy guard plus explicit customer confirmation before every
+> write reduced policy-violating episodes from **13.8% (11/80)** to **0% (0/80)**, and raised
+> pass^4 (all 4 trials of a task succeed) from **75.0%** to **95.0%**.
 
-Nothing in this repository asserts those numbers. They are produced by `make eval` against real
-models and written into the [Results](#results) block below together with model ids and the date.
+All numbers come from `make eval` and are written into the [Results](#results) block below together with the
+model ids and the date. Read [what these numbers do and do not show](#what-the-numbers-do-and-do-not-show)
+before quoting them.
+
+## At a glance
+
+| | Prompt-only agent (`control`) | Guarded agent (`guarded`) |
+|---|---|---|
+| Violating episodes | 13.8% (11/80) | 0% (0/80, 95% upper bound about 3.7%) |
+| Tasks done right in 1 trial (pass^1) | 85.0% | 98.8% |
+| Tasks done right in all 4 trials (pass^4) | 75.0% | 95.0% |
+| Handed to a human exactly when it should | 85.0% | 100.0% |
+| Mean cost per conversation | $0.0009 | $0.0008 |
+
+The guard does not make the model smarter; it makes the model's mistakes harmless. The same model, given
+the same policy text, still miscounts days, believes "my manager approved it" and over-refunds when nothing
+stops it. With the guard, those requests never reach the database.
+
+## How it works
+
+Every conversation follows the same path. Reading information is free; **changing** anything has to pass
+three independent checkpoints.
+
+```mermaid
+flowchart TD
+    A([Customer message]) --> B[Agent reads the request]
+    B --> C{Verified customer?}
+    C -- no --> D[Ask for account email and order ID]
+    D --> B
+    C -- yes --> E[Look up orders - read-only, scoped to this customer]
+    E --> F{Wants a change?}
+    F -- no --> G([Answer the question])
+    F -- yes --> H[Agent proposes the change]
+    H --> I{Policy guard<br/>plain code, no AI}
+    I -- allowed --> J[Ask the customer to confirm<br/>the exact order, amount or address]
+    I -- needs a person --> K[Create a ticket and hand off]
+    I -- denied --> L[Explain why, after 2 refusals hand off]
+    J --> M{Customer confirms?}
+    M -- yes --> N[Guard re-checks, then executes]
+    M -- no --> G
+    N --> O[Write a note to the CRM] --> G
+```
+
+A concrete example, a refund request on day 31 (the limit is day 30):
+
+| | Prompt-only agent | Guarded agent |
+|---|---|---|
+| What the model thinks | "Delivered Oct 1, so it is within 30 days." | Same (it can make the same mistake) |
+| What happens next | Customer confirms, **$80 refund is issued** | The guard computes the age of the order in code: 31 days, so **no refund is executed**; a ticket is created for a human |
+| Outcome | Policy violated, no ticket | Policy kept, customer told a person will follow up |
+
+In the latest evaluation the prompt-only agent made this exact mistake in 3 of 4 runs (4 of 4 in the
+previous run); the guarded agent never did.
+
+## Why it is reliable
+
+Reliability comes from layers that fail independently. A model error has to get past all of them.
+
+| Layer | What it does | Where |
+|---|---|---|
+| 1. Scoped reads | The agent can only read orders that belong to the verified customer | `tools/`, read tools |
+| 2. Policy guard | Pure Python function that decides allow / needs human / deny for every refund and address change (status, 30-day window, $200 cap, remaining amount). No model is involved, so it cannot be talked into anything | `agent/policy_guard.py` |
+| 3. Explicit confirmation | The customer must confirm the exact action; the model has to quote the customer's words and the quote is verified in code | `agent/nodes.py` |
+| 4. Untrusted data | Order notes and emails are wrapped as data; instructions inside them, and claims such as "my manager approved it", carry no authority. Even if the model were fooled, the guard still decides | prompt + guard |
+| 5. Bounded behaviour | Step caps per turn and per episode; two refused writes in a row, or a request for a person, end in a human handoff | `agent/runner.py`, `handoff` node |
+| 6. Independent audit | The evaluation re-judges every executed write against the true database state, whether or not the agent ran a guard, so the metric cannot be gamed by the agent | `evals/checker.py` |
+
+Where the prompt-only agent failed in the latest run (violating episodes out of 4 trials):
+fake manager approval 4/4, refund on day 31 3/4, cumulative refunds over $200 3/4, emotional pressure 1/4.
+The guarded agent had 0 in every scenario.
+
+## How it was improved
+
+Reliability work here is a loop, not a one-off: measure, read the failed conversations, change one thing,
+measure again. The numbers are from full runs of the same 20 scenarios.
+
+```mermaid
+flowchart LR
+    A[Run 20 scenarios<br/>x 4 trials x 2 variants] --> B[Read every failed<br/>conversation]
+    B --> C[Classify: model mistake,<br/>missing rule, or test noise]
+    C --> D[Fix one thing]
+    D --> E[Re-run and compare]
+    E --> A
+```
+
+| Round | What the failures showed | Change | Effect |
+|---|---|---|---|
+| 1. Baseline | Prompt-only agent: 15.0% violating episodes. Guarded: 0 violations, but 2 conversations failed because the agent **transferred to a human right away**, without asking for the email or order ID (pass^1 97.5%, handoff accuracy 97.5%) | None, this is the reference | Showed the guard was safe, but not yet helpful enough |
+| 2. Ask before escalating | Premature handoffs were the model's own habit, not caused by the guard (the prompt-only agent did it too) | Added a "missing information" rule to the system prompt: ask the customer instead of transferring or calling a tool with empty arguments | Premature handoffs that failed a scenario: 3 of 160 episodes before, 0 of 160 after; guarded handoff accuracy 100%, pass^1 98.8% |
+
+What is still open:
+
+- One guarded failure in the latest run (`n06`) was the **simulated customer** contradicting its own script, not
+  the agent: the agent verified the customer, listed the orders and answered correctly.
+- The model still often makes a first `verify_identity` call with empty fields before asking for them. It is
+  harmless (the call is rejected), but wasteful; the fix belongs in the tool layer, not in the prompt.
+- pass^4 improved by +20 points but its 95% interval just touches zero (see below), so more scenarios or trials are needed.
+
+## What the numbers do and do not show
+
+- **Do show:** with the same model and the same policy text, code-enforced rules plus confirmation removed
+  the policy violations the prompt-only agent made (violation-rate difference -13.8 points, 95% CI -27.5 to -1.2).
+- **Do not show:** a real-world violation rate of exactly zero. 0 of 80 only bounds the true rate below roughly
+  3.7%. The reported interval `[0%, 0%]` is a limitation of bootstrapping when every value is 0.
+- **Noise:** results vary from run to run. In two full runs the prompt-only agent's per-scenario violations
+  moved by one or two conversations, so only large and consistent gaps (fake approval, day-31 refund, cumulative
+  cap) should be read as signal.
+- **Scope:** a mock shop backend, one model (the same model also plays the customer), and 20 hand-written
+  scenarios built around the policy boundaries. See [Known limitations](#known-limitations).
 
 ## What is in the box
 
