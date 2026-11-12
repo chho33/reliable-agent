@@ -133,28 +133,67 @@ What is still open:
 
 ## Architecture
 
+**System components.** The agent talks to a model through a thin adapter and to the shop only through tools.
+The evaluation harness drives the same agent with a simulated customer and checks the resulting database state.
+
+```mermaid
+flowchart LR
+    subgraph EV["evals/"]
+        direction TB
+        U["Simulated customer<br/>(LLM)"]
+        EP["Episode loop"]
+        CK["Checker<br/>snapshot diff + guard replay"]
+        MT["Metrics<br/>pass^k, violations, CIs"]
+        RS[/"results/*.csv, *.md"/]
+        U <--> EP
+        EP --> CK --> MT --> RS
+    end
+
+    subgraph AG["agent/ - plain functions over a State"]
+        direction TB
+        GR["Agent graph<br/>act, guard, confirm,<br/>execute, handoff"]
+        PG["policy_guard.py<br/>pure policy, no model"]
+        GR --> PG
+    end
+
+    LLM["llm/<br/>Anthropic, OpenAI-compatible,<br/>scripted (stdlib HTTP only)"]
+    TC["ToolClient<br/>in-process or MCP stdio"]
+    TS["tools/<br/>MCP server"]
+    BE[("backends/mock<br/>SQLite: orders, refunds,<br/>tickets, CRM notes")]
+
+    EP <--> GR
+    GR --> LLM
+    GR --> TC --> TS --> BE
+    CK -. "reads true state" .-> BE
 ```
-                         ┌──────────────────────── evals/ ────────────────────────┐
-  simulated user (LLM) ──┤ episode loop → checker (snapshot diff + guard replay)   │
-        ▲   │            │ → metrics (pass^k, violations, CIs) → results/*.csv|md  │
-        │   ▼            └─────────────────────────────────────────────────────────┘
-   ┌──────────────────────────── agent/ (graph of plain functions) ────────────────────────────┐
-   │                                                                                            │
-   │   act ──(read tools)──▶ act                       (loop until the model replies in text)    │
-   │    │                                                                                       │
-   │    └─(write proposed / confirm_pending)──▶ guard ──allow──▶ confirm ──▶ END (ask customer)  │
-   │                                              │                                              │
-   │      next turn: act ─ confirm_pending ─▶ guard (re-checked) ─▶ execute ─▶ log_crm ─▶ act    │
-   │                                              ├─needs_human─▶ handoff ─▶ END                 │
-   │                                              └─deny──▶ act   (2nd consecutive failure ─▶ handoff)
-   │   control variant: act ─write─▶ execute ─▶ act      (no guard, no confirm, no auto note)   │
-   └───────────────┬────────────────────────────────────────────────────────────────────────────┘
-                   │ ToolClient (InProcess | MCP stdio)
-            ┌──────▼───────┐        ┌───────────────────────────┐
-            │ tools/       │───────▶│ backends/mock (SQLite+CRM) │
-            │ MCP server   │        └───────────────────────────┘
-            └──────────────┘
-   llm/: ChatModel protocol · AnthropicChat · OpenAICompatChat · ScriptedChat (stdlib HTTP only)
+
+**Agent graph.** The same nodes serve both variants; only the route out of `act` differs. In `guarded`, every write
+goes through `guard` and `confirm`; in `control`, it goes straight to `execute`.
+
+```mermaid
+flowchart TD
+    START([Customer message]) --> ACT["act<br/>model reads, calls tools, replies"]
+    ACT -- "read tool or no reply yet" --> ACT
+    ACT -- "text reply" --> END1([End of turn])
+
+    ACT -- "write proposed<br/>(guarded)" --> GUARD{"guard<br/>policy check"}
+    ACT -. "write proposed<br/>(control: no guard, no confirm)" .-> EXEC
+
+    GUARD -- "allow, needs confirmation" --> CONF["confirm<br/>ask the customer"]
+    CONF --> END2([End of turn])
+    END2 -. "next turn: customer confirms" .-> ACT
+    ACT -- "confirm_pending" --> GUARD
+    GUARD -- "allow, confirmed" --> EXEC["execute<br/>write to the shop"]
+
+    GUARD -- "needs a human" --> HAND["handoff<br/>create ticket"]
+    GUARD -- "deny" --> ACT
+    GUARD -- "deny, 2nd in a row" --> HAND
+
+    EXEC -- "ok (guarded)" --> LOG["log_crm<br/>write a note"]
+    LOG --> ACT
+    EXEC -- "2 failures in a row (guarded)" --> HAND
+    EXEC -- "otherwise" --> ACT
+    HAND --> END3([Conversation ends])
 ```
 
 Code map: `agent/policy_guard.py` (pure policy), `agent/nodes.py` (nodes + routers),
