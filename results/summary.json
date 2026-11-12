@@ -1,0 +1,116 @@
+{
+  "meta": {
+    "date": "2026-11-11",
+    "agent_model": "openai:gpt-6-luna",
+    "user_model": "openai:gpt-6-luna",
+    "engine": "builtin",
+    "n_scenarios": 20,
+    "trials": 4,
+    "variants": [
+      "guarded",
+      "control"
+    ],
+    "k": 4,
+    "bootstrap": {
+      "n_boot": 2000,
+      "seed": 0
+    }
+  },
+  "variants": {
+    "control": {
+      "episodes": 80,
+      "scenarios": 20,
+      "trials_per_scenario": 4,
+      "errored_episodes": 0,
+      "pass_1": {
+        "value": 0.85,
+        "ci95": [
+          0.7125,
+          0.9628124999999983
+        ]
+      },
+      "pass_4": {
+        "value": 0.75,
+        "ci95": [
+          0.55,
+          0.9012499999999932
+        ]
+      },
+      "violation_rate": {
+        "value": 0.1375,
+        "ci95": [
+          0.0125,
+          0.2753124999999983
+        ]
+      },
+      "handoff_accuracy": {
+        "value": 0.85,
+        "ci95": [
+          0.7125,
+          0.9628124999999983
+        ]
+      },
+      "mean_cost_usd": 0.0008618525,
+      "mean_input_tokens": 7654.525,
+      "mean_output_tokens": 192.8,
+      "mean_turns": 2.6375,
+      "p95_latency_s": 14.455449999999999
+    },
+    "guarded": {
+      "episodes": 80,
+      "scenarios": 20,
+      "trials_per_scenario": 4,
+      "errored_episodes": 0,
+      "pass_1": {
+        "value": 0.9875,
+        "ci95": [
+          0.9625,
+          1.0
+        ]
+      },
+      "pass_4": {
+        "value": 0.95,
+        "ci95": [
+          0.85,
+          1.0
+        ]
+      },
+      "violation_rate": {
+        "value": 0.0,
+        "ci95": [
+          0.0,
+          0.0
+        ]
+      },
+      "handoff_accuracy": {
+        "value": 1.0,
+        "ci95": [
+          1.0,
+          1.0
+        ]
+      },
+      "mean_cost_usd": 0.0008433675,
+      "mean_input_tokens": 7492.1125,
+      "mean_output_tokens": 188.3125,
+      "mean_turns": 2.6125,
+      "p95_latency_s": 14.67635
+    }
+  },
+  "paired_delta_guarded_minus_control": {
+    "pass_4": [
+      0.19999999999999996,
+      -0.0012499999999999274,
+      0.44999999999999996
+    ],
+    "violation_rate": [
+      -0.1375,
+      -0.2753125,
+      -0.0125
+    ],
+    "handoff_accuracy": [
+      0.15000000000000002,
+      0.0371875,
+      0.2875
+    ]
+  }
+}
